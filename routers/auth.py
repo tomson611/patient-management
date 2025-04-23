@@ -7,17 +7,20 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from db.database import get_db
-from models.users import Users
+from models.users import User
 from schemas.users import CreateUserRequest, UserResponse, Token
 from config import settings
 from services.auth_service import (
     authenticate_user,
     create_access_token,
     get_current_user,
-    bcrypt_context,  # imported for password hashing during registration
+    bcrypt_context,
 )
 
-router = APIRouter(tags=["Authentication"])
+router = APIRouter(
+    prefix="/auth",
+    tags=["Authentication"]
+)
 db_dependency = Annotated[Session, Depends(get_db)]
 
 
@@ -35,7 +38,7 @@ async def create_user(
     db: db_dependency
 ):
     hashed_password = bcrypt_context.hash(create_user_request.password)
-    user = Users(
+    user = User(
         username=create_user_request.username,
         email=create_user_request.email,
         first_name=create_user_request.first_name,
@@ -90,7 +93,7 @@ async def login_for_access_token(
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         username=user.username,
-        user_id=user.id,
+        user_id=str(user.id),
         role=user.role,
         expires_delta=access_token_expires
     )

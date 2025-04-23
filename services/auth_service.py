@@ -1,12 +1,12 @@
 from datetime import timedelta, datetime
-from typing import Annotated
+from typing import Annotated, Optional
 from fastapi import HTTPException, status, Depends
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from config import settings
-from models.users import Users
+from models.users import User
 from fastapi.security import OAuth2PasswordBearer
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -14,11 +14,11 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
 
-def authenticate_user(username: str, password: str, db: Session) -> Users:
-    user = db.query(Users).filter(Users.username == username).first()
-    if user and bcrypt_context.verify(password, user.hashed_password):
-        return user
-    return None
+def authenticate_user(username: str, password: str, db: Session) -> Optional[User]:
+    user = db.query(User).filter(User.username == username).first()
+    if not user or not bcrypt_context.verify(password, user.hashed_password):
+        return None
+    return user
 
 
 def create_access_token(username: str, user_id: str, role: str, expires_delta: timedelta) -> str:
