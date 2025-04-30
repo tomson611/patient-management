@@ -12,12 +12,10 @@ function PatientsPage() {
     async function fetchPatients() {
       try {
         const token = localStorage.getItem('token');
-        console.log('Token in localStorage:', token);
         if (!token) {
           console.warn('No token found in localStorage!');
         }
         const authHeader = `Bearer ${token}`;
-        console.log('Authorization header:', authHeader);
         const response = await axios.get('/patients/', {
           headers: {
             Authorization: authHeader
