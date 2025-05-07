@@ -10,12 +10,13 @@ from models.users import User
 from fastapi.security import OAuth2PasswordBearer
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
 
 def authenticate_user(username: str, password: str, db: Session) -> Optional[User]:
     user = db.query(User).filter(User.username == username).first()
+    # Return None if user does not exist or password is incorrect
     if not user or not bcrypt_context.verify(password, user.hashed_password):
         return None
     return user

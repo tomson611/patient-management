@@ -171,11 +171,6 @@ def get_patients(
     current_user: dict = Depends(get_current_user)
 ):
     try:
-        if current_user.get('role') != 'admin':
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only admin users can access patient information"
-            )
         patients = db.query(Patient).offset(skip).limit(limit).all()
 
         response_data = []
@@ -191,7 +186,6 @@ def get_patients(
                 "email": patient.email,
                 "medical_history": patient.medical_history,
                 "is_active": patient.is_active,
-                "assigned_users": [user.id for user in patient.assigned_users]
             })
 
         return response_data
