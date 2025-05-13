@@ -1,0 +1,38 @@
+[tool.poetry]
+name = "patient-management"
+version = "0.1.0"
+description = "Patient Management System"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+packages = [
+    { include = "db" },
+    { include = "models" },
+    { include = "routers" },
+    { include = "schemas" },
+    { include = "services" },
+    { include = "main.py" },
+    { include = "config.py" }
+]
+
+[tool.poetry.dependencies]
+python = ">= 3.10,< 3.11"
+fastapi = "^0.109.0"
+uvicorn = "^0.27.0"
+sqlalchemy = "^2.0.0"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+psycopg = {extras = ["binary"], version = "^3.1.18"}
+pydantic-settings = "^2.1.0"
+pydantic = {extras = ["email"], version = "^2.6.0"}
+python-multipart = "^0.0.9"
+bcrypt = "^4.1.0"
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.2.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+start = "run:main"

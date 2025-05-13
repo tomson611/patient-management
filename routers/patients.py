@@ -1,95 +1,70 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+"""API endpoints for patient management."""
+
+import logging
 from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.orm import Session
+
 from db.database import get_db
 from models.patients import Patient
+from models.users import User
 from schemas.patients import PatientCreate, PatientResponse
 from services.auth_service import get_current_user
-from schemas.users import UserResponse
-import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-router = APIRouter(
-    prefix="/patients",
-    tags=["patients"]
-)
+router = APIRouter(prefix="/patients", tags=["patients"])
 
-@router.post("/", 
+
+@router.post(
+    "/",
     response_model=PatientResponse,
     status_code=status.HTTP_201_CREATED,
     responses={
-        400: {"description": "Bad Request - Invalid input data or email already exists"},
-        403: {"description": "Forbidden - Only admin users can create patients"},
+        400: {
+            "description": ("Bad Request - Invalid input data or email already exists")
+        },
         404: {"description": "Not Found - User not found"},
-        500: {"description": "Internal Server Error - Database error"}
-    }
+        500: {"description": "Internal Server Error - Database error"},
+    },
 )
 def create_patient(
     patient: PatientCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
+    current_user: User = Depends(get_current_user),
+) -> Patient:
+    """Create a new patient in the database."""
     try:
-        if current_user.get('role') != 'admin':
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only admin users can create patients"
-            )
-
         db_patient = db.query(Patient).filter(Patient.email == patient.email).first()
         if db_patient:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
+                detail="Email already registered",
             )
 
-        db_patient = Patient(
-            first_name=patient.first_name,
-            last_name=patient.last_name,
-            date_of_birth=patient.date_of_birth,
-            gender=patient.gender,
-            address=patient.address,
-            phone_number=patient.phone_number,
-            email=patient.email,
-            medical_history=patient.medical_history
-        )
-
-
+        db_patient = Patient(**patient.model_dump())
         db.add(db_patient)
         db.commit()
         db.refresh(db_patient)
 
-        response_data = {
-            "id": db_patient.id,
-            "first_name": db_patient.first_name,
-            "last_name": db_patient.last_name,
-            "date_of_birth": db_patient.date_of_birth,
-            "gender": db_patient.gender,
-            "address": db_patient.address,
-            "phone_number": db_patient.phone_number,
-            "email": db_patient.email,
-            "medical_history": db_patient.medical_history,
-            "is_active": db_patient.is_active
-        }
-
-        return response_data
+        return db_patient
 
     except IntegrityError as e:
         db.rollback()
         logger.error(f"Database integrity error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Database integrity error occurred"
+            detail="Database integrity error occurred",
         )
     except SQLAlchemyError as e:
         db.rollback()
         logger.error(f"Database error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while processing your request"
+            detail="An error occurred while processing your request",
         )
     except Exception as e:
         db.rollback()
@@ -98,56 +73,40 @@ def create_patient(
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred"
+            detail="An unexpected error occurred",
         )
 
-@router.get("/{patient_id}", 
+
+@router.get(
+    "/{patient_id}",
     response_model=PatientResponse,
     responses={
-        403: {"description": "Forbidden - User doesn't have access to this patient"},
+        403: {"description": ("Forbidden - User doesn't have access to this patient")},
         404: {"description": "Not Found - Patient not found"},
-        500: {"description": "Internal Server Error - Database error"}
-    }
+        500: {"description": "Internal Server Error - Database error"},
+    },
 )
 def get_patient(
     patient_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
+    current_user: User = Depends(get_current_user),
+) -> Patient:
+    """Retrieve a patient by ID."""
     try:
         patient = db.query(Patient).filter(Patient.id == patient_id).first()
         if not patient:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Patient not found"
+                detail="Patient not found",
             )
 
-        if current_user.get('role') != 'admin':
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only admin users can access patient information"
-            )
-
-        response_data = {
-            "id": patient.id,
-            "first_name": patient.first_name,
-            "last_name": patient.last_name,
-            "date_of_birth": patient.date_of_birth,
-            "gender": patient.gender,
-            "address": patient.address,
-            "phone_number": patient.phone_number,
-            "email": patient.email,
-            "medical_history": patient.medical_history,
-            "is_active": patient.is_active
-        }
-
-        return response_data
+        return patient
 
     except SQLAlchemyError as e:
         logger.error(f"Database error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while retrieving the patient"
+            detail="An error occurred while retrieving the patient",
         )
     except Exception as e:
         if isinstance(e, HTTPException):
@@ -155,46 +114,31 @@ def get_patient(
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred"
+            detail="An unexpected error occurred",
         )
 
-@router.get("/", 
+
+@router.get(
+    "/",
     response_model=List[PatientResponse],
-    responses={
-        500: {"description": "Internal Server Error - Database error"}
-    }
+    responses={500: {"description": "Internal Server Error - Database error"}},
 )
 def get_patients(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
+    current_user: User = Depends(get_current_user),
+) -> List[Patient]:
+    """Retrieve a list of patients."""
     try:
         patients = db.query(Patient).offset(skip).limit(limit).all()
-
-        response_data = []
-        for patient in patients:
-            response_data.append({
-                "id": patient.id,
-                "first_name": patient.first_name,
-                "last_name": patient.last_name,
-                "date_of_birth": patient.date_of_birth,
-                "gender": patient.gender,
-                "address": patient.address,
-                "phone_number": patient.phone_number,
-                "email": patient.email,
-                "medical_history": patient.medical_history,
-                "is_active": patient.is_active,
-            })
-
-        return response_data
+        return patients
 
     except SQLAlchemyError as e:
         logger.error(f"Database error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while retrieving patients"
+            detail="An error occurred while retrieving patients",
         )
     except Exception as e:
         if isinstance(e, HTTPException):
@@ -202,87 +146,59 @@ def get_patients(
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred"
+            detail="An unexpected error occurred",
         )
 
-@router.put("/{patient_id}", 
+
+@router.put(
+    "/{patient_id}",
     response_model=PatientResponse,
     responses={
-        400: {"description": "Bad Request - Invalid input data or email already exists"},
-        403: {"description": "Forbidden - Only admin users can edit patients"},
+        400: {
+            "description": ("Bad Request - Invalid input data or email already exists")
+        },
         404: {"description": "Not Found - Patient or user not found"},
-        500: {"description": "Internal Server Error - Database error"}
-    }
+        500: {"description": "Internal Server Error - Database error"},
+    },
 )
 def update_patient(
     patient_id: int,
     patient: PatientCreate,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
+    current_user: User = Depends(get_current_user),
+) -> Patient:
+    """Update an existing patient."""
     try:
-        if current_user.get('role') != 'admin':
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only admin users can edit patients"
-            )
-
         db_patient = db.query(Patient).filter(Patient.id == patient_id).first()
         if not db_patient:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Patient not found"
+                detail="Patient not found",
             )
 
         if patient.email != db_patient.email:
-            existing_patient = db.query(Patient).filter(Patient.email == patient.email).first()
+            existing_patient = (
+                db.query(Patient).filter(Patient.email == patient.email).first()
+            )
             if existing_patient:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Email already registered"
+                    detail="Email already registered",
                 )
 
-        db_patient.first_name = patient.first_name
-        db_patient.last_name = patient.last_name
-        db_patient.date_of_birth = patient.date_of_birth
-        db_patient.gender = patient.gender
-        db_patient.address = patient.address
-        db_patient.phone_number = patient.phone_number
-        db_patient.email = patient.email
-        db_patient.medical_history = patient.medical_history
-
+        for key, value in patient.model_dump().items():
+            setattr(db_patient, key, value)
 
         db.commit()
         db.refresh(db_patient)
+        return db_patient
 
-        response_data = {
-            "id": db_patient.id,
-            "first_name": db_patient.first_name,
-            "last_name": db_patient.last_name,
-            "date_of_birth": db_patient.date_of_birth,
-            "gender": db_patient.gender,
-            "address": db_patient.address,
-            "phone_number": db_patient.phone_number,
-            "email": db_patient.email,
-            "medical_history": db_patient.medical_history,
-            "is_active": db_patient.is_active
-        }
-
-        return response_data
-
-    except IntegrityError as e:
-        db.rollback()
-        logger.error(f"Database integrity error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Database integrity error occurred"
-        )
     except SQLAlchemyError as e:
         db.rollback()
         logger.error(f"Database error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while updating the patient"
+            detail="An error occurred while updating the patient",
         )
     except Exception as e:
         db.rollback()
@@ -291,34 +207,37 @@ def update_patient(
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred"
+            detail="An unexpected error occurred",
         )
 
-@router.delete("/{patient_id}", 
+
+@router.delete(
+    "/{patient_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     responses={
         403: {"description": "Forbidden - Only admin users can delete patients"},
         404: {"description": "Not Found - Patient not found"},
-        500: {"description": "Internal Server Error - Database error"}
-    }
+        500: {"description": "Internal Server Error - Database error"},
+    },
 )
 def delete_patient(
     patient_id: int,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """Delete a patient from the database."""
     try:
-        if current_user.get('role') != 'admin':
+        if current_user.role != "admin":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only admin users can delete patients"
+                detail="Only admin users can delete patients",
             )
 
         db_patient = db.query(Patient).filter(Patient.id == patient_id).first()
         if not db_patient:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Patient not found"
+                detail="Patient not found",
             )
 
         db.delete(db_patient)
@@ -329,7 +248,7 @@ def delete_patient(
         logger.error(f"Database error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while deleting the patient"
+            detail="An error occurred while deleting the patient",
         )
     except Exception as e:
         db.rollback()
@@ -338,5 +257,5 @@ def delete_patient(
         logger.error(f"Unexpected error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An unexpected error occurred"
+            detail="An unexpected error occurred",
         )

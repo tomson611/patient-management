@@ -1,16 +1,23 @@
+"""Database setup and session management."""
+
+from typing import Generator
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
+
 from config import settings
 
-SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
-if SQLALCHEMY_DATABASE_URL is None:
-    raise ValueError("DATABASE_URL is not set in environment variables or .env file.")
+if not settings.DATABASE_URL:
+    raise ValueError("DATABASE_URL environment variable is not set")
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"port": 5433})
+engine = create_engine(settings.DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
-def get_db():
+
+def get_db() -> "Generator[Session, None, None]":
+    """Yield a database session and ensure it is closed after use."""
     db = SessionLocal()
     try:
         yield db
