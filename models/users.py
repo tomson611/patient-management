@@ -1,8 +1,14 @@
+"""SQLAlchemy model for User."""
+
+from sqlalchemy import Boolean, Column, Integer, String
+
 from db.database import Base
-from sqlalchemy import Column, Integer, String, Boolean
+
 
 class User(Base):
-    __tablename__ = 'users'
+    """SQLAlchemy User model."""
+
+    __tablename__ = "users"
 
     username = Column(String, unique=True)
     id = Column(Integer, primary_key=True, index=True)
@@ -12,4 +18,3 @@ class User(Base):
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
     role = Column(String)
-
