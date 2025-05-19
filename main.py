@@ -10,7 +10,7 @@ from routers import auth, patients
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> "AsyncGenerator[None, None]":
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Lifespan context manager for FastAPI app startup and shutdown."""
     # Startup
     Base.metadata.create_all(bind=engine)
