@@ -12,9 +12,6 @@ from config import settings
 from db.database import get_db
 from models.users import User
 
-# from typing import Optional, Union  # Remove unused Union and Optional
-
-
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -60,7 +57,6 @@ async def get_current_user(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        # Convert user_id from string to integer
         try:
             user_id_int = int(user_id) if user_id is not None else None
             if user_id_int is None:
