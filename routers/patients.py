@@ -188,8 +188,10 @@ def update_patient(
                     detail="Email already registered",
                 )
 
+        mutable_fields = ["name", "email", "phone"]  # Define fields that can be updated
         for key, value in patient.model_dump().items():
-            setattr(db_patient, key, value)
+            if key in mutable_fields:
+                setattr(db_patient, key, value)
 
         db.commit()
         db.refresh(db_patient)
