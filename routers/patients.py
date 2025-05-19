@@ -35,7 +35,7 @@ def create_patient(
     patient: PatientCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Patient:
+) -> PatientResponse:
     """Create a new patient in the database."""
     try:
         db_patient = db.query(Patient).filter(Patient.email == patient.email).first()
@@ -50,7 +50,7 @@ def create_patient(
         db.commit()
         db.refresh(db_patient)
 
-        return db_patient
+        return PatientResponse.model_validate(db_patient, from_attributes=True)
 
     except IntegrityError as e:
         db.rollback()
@@ -90,7 +90,7 @@ def get_patient(
     patient_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Patient:
+) -> PatientResponse:
     """Retrieve a patient by ID."""
     try:
         patient = db.query(Patient).filter(Patient.id == patient_id).first()
@@ -100,7 +100,7 @@ def get_patient(
                 detail="Patient not found",
             )
 
-        return patient
+        return PatientResponse.model_validate(patient, from_attributes=True)
 
     except SQLAlchemyError as e:
         logger.error(f"Database error: {str(e)}")
@@ -128,11 +128,13 @@ def get_patients(
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[Patient]:
+) -> List[PatientResponse]:
     """Retrieve a list of patients."""
     try:
         patients = db.query(Patient).offset(skip).limit(limit).all()
-        return patients
+        return [
+            PatientResponse.model_validate(p, from_attributes=True) for p in patients
+        ]
 
     except SQLAlchemyError as e:
         logger.error(f"Database error: {str(e)}")
@@ -166,7 +168,7 @@ def update_patient(
     patient: PatientCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Patient:
+) -> PatientResponse:
     """Update an existing patient."""
     try:
         db_patient = db.query(Patient).filter(Patient.id == patient_id).first()
@@ -191,7 +193,7 @@ def update_patient(
 
         db.commit()
         db.refresh(db_patient)
-        return db_patient
+        return PatientResponse.model_validate(db_patient, from_attributes=True)
 
     except SQLAlchemyError as e:
         db.rollback()
