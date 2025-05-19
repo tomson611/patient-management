@@ -1,8 +1,14 @@
+"""SQLAlchemy model for Patient."""
+
+from sqlalchemy import Boolean, Column, Integer, String
+
 from db.database import Base
-from sqlalchemy import Column, Integer, String, Boolean
+
 
 class Patient(Base):
-    __tablename__ = 'patients'
+    """SQLAlchemy Patient model."""
+
+    __tablename__ = "patients"
 
     id = Column(Integer, primary_key=True, index=True)
     first_name = Column(String)
@@ -14,4 +20,3 @@ class Patient(Base):
     email = Column(String, unique=True)
     medical_history = Column(String)
     is_active = Column(Boolean, default=True)
-
