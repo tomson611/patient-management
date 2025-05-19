@@ -7,9 +7,6 @@ from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 from config import settings
 
-if not settings.DATABASE_URL:
-    raise ValueError("DATABASE_URL environment variable is not set")
-
 engine = create_engine(settings.DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
