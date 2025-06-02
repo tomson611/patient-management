@@ -1,3 +1,6 @@
+"""API endpoints for authentication and user management."""
+
+import logging
 from datetime import timedelta
 from typing import Annotated
 
@@ -6,22 +9,15 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from config import settings
 from db.database import get_db
 from models.users import User
-from schemas.users import CreateUserRequest, UserResponse, Token
-from config import settings
-from services.auth_service import (
-    authenticate_user,
-    create_access_token,
-    get_current_user,
-    bcrypt_context,
-)
+from schemas.users import Token, UserCreate, UserResponse
+from services.auth_service import authenticate_user, bcrypt_context, create_access_token
 
-router = APIRouter(
-    prefix="/auth",
-    tags=["Authentication"]
-)
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 db_dependency = Annotated[Session, Depends(get_db)]
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -29,72 +25,78 @@ db_dependency = Annotated[Session, Depends(get_db)]
     status_code=status.HTTP_201_CREATED,
     response_model=UserResponse,
     responses={
-        400: {"description": "Bad Request (Email or Username already exists)"},
-        500: {"description": "Internal Server Error"}
-    }
+        400: {"description": ("Bad Request (Email or Username already exists)")},
+        500: {"description": "Internal Server Error"},
+    },
 )
-async def create_user(
-    create_user_request: CreateUserRequest,
-    db: db_dependency
-):
-    hashed_password = bcrypt_context.hash(create_user_request.password)
-    user = User(
-        username=create_user_request.username,
-        email=create_user_request.email,
-        first_name=create_user_request.first_name,
-        last_name=create_user_request.last_name,
-        role=create_user_request.role,
-        hashed_password=hashed_password,
-        is_active=True
-    )
-
+async def create_user(user_create: UserCreate, db: db_dependency) -> UserResponse:
+    """Create a new user in the database."""
     try:
+        hashed_password = bcrypt_context.hash(user_create.password)
+        user = User(
+            email=user_create.email,
+            username=user_create.username,
+            hashed_password=hashed_password,
+            role=user_create.role,
+            first_name=user_create.first_name,
+            last_name=user_create.last_name,
+        )
         db.add(user)
         db.commit()
         db.refresh(user)
+        return UserResponse.model_validate(user, from_attributes=True)
     except IntegrityError as e:
         db.rollback()
         error_message = str(e.orig)
+        logger.error("IntegrityError: %s", error_message)
+
         if "email" in error_message:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already exists"
+                detail="Email already registered",
             )
         elif "username" in error_message:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already exists"
+                detail="Username already taken",
             )
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Database constraint error"
+                detail="Database constraint error",
             )
-    return user
+    except Exception as e:
+        db.rollback()
+        logger.exception("An unexpected error occurred: %s", str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
+        )
 
 
 @router.post(
     "/login",
     response_model=Token,
-    responses={401: {"description": "Invalid credentials"}}
+    responses={401: {"description": "Invalid credentials"}},
 )
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: db_dependency
-):
+    db: db_dependency,
+) -> dict:
+    """Authenticate user and return an access token."""
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
-            headers={"WWW-Authenticate": "Bearer"}
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        username=user.username,
+        username=str(user.username),
         user_id=str(user.id),
-        role=user.role,
-        expires_delta=access_token_expires
+        role=str(user.role),
+        expires_delta=access_token_expires,
     )
     return {"access_token": access_token, "token_type": "bearer"}
