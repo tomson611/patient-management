@@ -102,3 +102,19 @@ poetry run pytest
 -   `GET /patients/{patient_id}`: Retrieve a specific patient by their ID.
 -   `PUT /patients/{patient_id}`: Update a patient's information.
 -   `DELETE /patients/{patient_id}`: Delete a patient (Admin only).
+
+## Frontend
+
+The frontend is a Vite + React app located in `frontend/`.
+
+To run the frontend in development and point it at the backend, set Vite env var `VITE_API_URL` (defaults to http://localhost:8001):
+
+```bash
+cd frontend
+# install deps if needed
+npm install
+# start dev server, set API URL if backend is not at default
+VITE_API_URL=http://localhost:8001 npm run dev
+```
+
+The app stores JWT in localStorage under `token` after login and sends it as `Authorization: Bearer <token>`.

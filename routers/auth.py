@@ -14,6 +14,7 @@ from db.database import get_db
 from models.users import User
 from schemas.users import Token, UserCreate, UserResponse
 from services.auth_service import authenticate_user, bcrypt_context, create_access_token
+from services.auth_service import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 db_dependency = Annotated[Session, Depends(get_db)]
@@ -100,3 +101,15 @@ async def login_for_access_token(
         expires_delta=access_token_expires,
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+
+
+@router.get(
+    "/me",
+    response_model=UserResponse,
+    responses={401: {"description": "Unauthorized"}},
+)
+async def read_current_user(current_user: User = Depends(get_current_user)) -> UserResponse:
+    """Return information about the currently authenticated user."""
+    return UserResponse.model_validate(current_user, from_attributes=True)

@@ -6,7 +6,7 @@ import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
-import axios from 'axios';
+import api from '../api';
 
 function RegisterPage() {
   const [form, setForm] = useState({
@@ -19,6 +19,11 @@ function RegisterPage() {
   });
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const token = localStorage.getItem('token');
+
+  if (token) {
+    navigate('/patients');
+  }
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -28,7 +33,7 @@ function RegisterPage() {
     event.preventDefault();
     setError('');
     try {
-      await axios.post('/auth/register', form);
+  await api.post('/auth/register', form);
       navigate('/login');
     } catch (err) {
       setError('Registration failed');

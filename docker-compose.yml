@@ -23,6 +23,19 @@ services:
       - "8001:8001"
     restart: on-failure
 
+  frontend:
+    image: node:18-alpine
+    working_dir: /usr/src/app
+    volumes:
+      - ./frontend:/usr/src/app:cached
+      - /usr/src/app/node_modules
+    command: sh -c "npm install --silent --no-audit --no-fund && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://app:8001
+    restart: unless-stopped
+
 volumes:
   db_data:
     driver: local

@@ -6,13 +6,22 @@ import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import axios from 'axios';
+import api from '../api';
+import { useContext } from 'react';
+import { AuthContext } from '../AuthContext';
 
 function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { setToken } = useContext(AuthContext);
+  const token = localStorage.getItem('token');
+
+  // if already logged in, redirect
+  if (token) {
+    navigate('/patients');
+  }
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -22,13 +31,13 @@ function LoginPage() {
       params.append('username', username);
       params.append('password', password);
 
-      const response = await axios.post('/auth/login', params, {
+      const response = await api.post('/auth/login', params, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded'
         }
       });
-      // Save token and redirect
-      localStorage.setItem('token', response.data.access_token);
+      // Save token via context and redirect
+      setToken(response.data.access_token);
       navigate('/patients');
     } catch (err) {
       setError('Invalid credentials');

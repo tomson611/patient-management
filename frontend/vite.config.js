@@ -6,8 +6,9 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/auth': 'http://localhost:8001',
-      '/patients': 'http://localhost:8001',
+      // when running in docker-compose, target the backend service by name
+      '/auth': 'http://app:8001',
+      '/patients': 'http://app:8001',
       // add other backend routes as needed
     },
   },
