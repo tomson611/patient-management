@@ -1,0 +1,28 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:${POSTGRES_PORT}"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  app:
+    image: patient-managment:latest
+    build: .
+    depends_on:
+      - db
+    env_file:
+      - .env
+    ports:
+      - "8001:8001"
+    restart: on-failure
+
+volumes:
+  db_data:
+    driver: local

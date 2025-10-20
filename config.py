@@ -15,6 +15,7 @@ class Settings(BaseSettings):
         """Pydantic configuration for environment file."""
 
         env_file = ".env"
+        extra = "ignore"
 
 
 settings = Settings()
