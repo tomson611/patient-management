@@ -13,7 +13,7 @@ services:
       - db_data:/var/lib/postgresql/data
 
   app:
-    image: patient-managment:latest
+    image: patient-management:latest
     build: .
     depends_on:
       - db
