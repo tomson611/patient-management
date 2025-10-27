@@ -24,17 +24,15 @@ services:
     restart: on-failure
 
   frontend:
-    image: node:18-alpine
-    working_dir: /usr/src/app
-    volumes:
-      - ./frontend:/usr/src/app:cached
-      - /usr/src/app/node_modules
-    command: sh -c "npm install --silent --no-audit --no-fund && npm run dev -- --host 0.0.0.0"
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: patient-management-frontend:latest
     ports:
-      - "5173:5173"
-    environment:
-      - VITE_API_URL=http://app:8001
+      - "3000:80"
     restart: unless-stopped
+    depends_on:
+      - app
 
 volumes:
   db_data:
